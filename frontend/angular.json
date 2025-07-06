@@ -17,9 +17,7 @@
           "builder": "@angular/build:application",
           "options": {
             "browser": "src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
+            "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
@@ -27,16 +25,21 @@
                 "input": "public"
               }
             ],
-"styles": [
-    "node_modules/bootstrap/dist/css/bootstrap.min.css",
+            "styles": [
+              "node_modules/bootstrap/dist/css/bootstrap.min.css",
 
-  "node_modules/angular-calendar/css/angular-calendar.css",
-  "src/styles.css"
-]
-
+              "node_modules/angular-calendar/css/angular-calendar.css",
+              "src/styles.css"
+            ]
           },
           "configurations": {
             "production": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
               "budgets": [
                 {
                   "type": "initial",
@@ -61,6 +64,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "port": 3000
+          },
           "configurations": {
             "production": {
               "buildTarget": "frontend:build:production"
@@ -77,10 +83,7 @@
         "test": {
           "builder": "@angular/build:karma",
           "options": {
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
+            "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
             "assets": [
               {
@@ -89,8 +92,8 @@
               }
             ],
             "styles": [
-  "node_modules/angular-calendar/css/angular-calendar.css",
-  "src/styles.css"
+              "node_modules/angular-calendar/css/angular-calendar.css",
+              "src/styles.css"
             ]
           }
         }

@@ -8,7 +8,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],
+    allow_origins=[
+    "http://localhost:3000",  # Angular via Docker or dev
+    "http://127.0.0.1:3000"   # Some browsers use this
+],
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

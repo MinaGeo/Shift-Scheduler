@@ -4,6 +4,9 @@ import { Employee } from './types/employee';
 import { Shift } from './types/shift';
 import { Assignment } from './types/assignment';
 import { CalendarWrapperModule } from './calendar-wrapper.module';
+import { environment } from '../environments/environment';
+
+
 
 import {
   CalendarView,
@@ -101,7 +104,7 @@ optimizeOnline() {
 
   console.log('Sending payload:', JSON.stringify(payload, null, 2));
 
-  fetch('http://127.0.0.1:8000/api/schedule/optimize', {
+  fetch(`${environment.apiUrl}/api/schedule/optimize`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -17,8 +17,8 @@ Shift Scheduler allows organizations to manage employee shifts effectively. It s
 
 ## 🌐 Technologies Used
 
-* **Frontend**: Angular 16, Bootstrap, Angular Calendar
-* **Backend**: Python 3.10+, FastAPI, PuLP (for ILP)
+* **Frontend**: Angular 22, Bootstrap, Angular Calendar
+* **Backend**: Python 3.12+, FastAPI, PuLP (for ILP)
 * **Dockerized**: Yes (Docker Compose)
 
 ---
@@ -58,28 +58,6 @@ Shift Scheduler/
 
 ---
 
-## 🎓 Demo Script (for video or live presentation)
-
-1. **Intro Slide**: "Shift Scheduler - Offline-first scheduling with online optimization"
-2. **Local App**
-
-   * Open app (`localhost:3000`)
-   * Show empty calendar
-   * Import CSVs for employees & shifts
-   * Click "Run Offline Scheduler" → Show allocation
-3. **Online Optimization**
-
-   * Run backend with Docker
-   * Refresh app (detects backend)
-   * Click "Optimize Online" → Show improved allocation
-   * Show printed metrics from backend (fairness, overwork, etc.)
-4. **Wrap Up**
-
-   * Recap features: offline support, calendar UI, backend optimization, Docker
-   * Show code folders (Angular / FastAPI)
-
----
-
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -114,20 +92,20 @@ uvicorn main:app --reload
 ---
 
 ## 📄 CSV Formats
-
+Sample files can be found in frontend/samples.
 ### Employees CSV
 
 ```
-name,skills
-John Doe,Math;English
-Jane Smith,Physics;English
+id,name,skills,max_hours,availability_start,availability_end
+E1,Emp 1,"server,cook",30,2025-07-01T06:00:00,2025-07-14T22:00:00
+E2,Emp 2,cashier,30,2025-07-01T06:00:00,2025-07-14T22:00:00
 ```
 
 ### Shifts CSV
 
 ```
-day,hour,skill
-Monday,09:00,Math
-Monday,10:00,English
+id,role,start_time,end_time,required_skill
+S1,shift_1,2025-07-01T08:00:00,2025-07-01T12:00:00,cook
+S2,shift_2,2025-07-02T14:00:00,2025-07-02T20:00:00,cashier
 ```
 

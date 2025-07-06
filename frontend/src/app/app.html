@@ -1,0 +1,34 @@
+    <div class="container">
+      <h1>Shift Scheduler MVP</h1>
+      
+      <div class="upload-section">
+        <h2>Upload CSV Files</h2>
+        <div>
+          <label>Employees CSV:</label>
+          <input type="file" (change)="onEmployeeFileChange($event)" accept=".csv">
+        </div>
+        <div>
+          <label>Shifts CSV:</label>
+          <input type="file" (change)="onShiftFileChange($event)" accept=".csv">
+        </div>
+        <button (click)="runScheduling()" [disabled]="!employees.length || !shifts.length">
+          Generate Schedule
+        </button>
+      </div>
+
+      <div class="results" *ngIf="assignments.length">
+        <h2>Generated Schedule</h2>
+        <div class="schedule-grid">
+          <div *ngFor="let assignment of assignments" class="assignment-card">
+            <strong>{{getShiftRole(assignment.shift_id)}}</strong><br>
+            Employee: {{getEmployeeName(assignment.employee_id)}}<br>
+            Time: {{getShiftTime(assignment.shift_id)}}
+          </div>
+        </div>
+        
+        <div class="metrics">
+          <p>Total Assignments: {{assignments.length}}</p>
+          <p>Unassigned Shifts: {{unassignedShifts.length}}</p>
+        </div>
+      </div>
+    </div>

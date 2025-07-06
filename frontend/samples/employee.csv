@@ -1,0 +1,5 @@
+id,name,skills,max_hours,availability_start,availability_end
+E1,John Doe,"cook,cashier",80,2025-07-01T08:00:00,2025-07-14T22:00:00
+E2,Jane Smith,cook,40,2025-07-01T06:00:00,2025-07-14T18:00:00
+E3,Bob Johnson,cashier,60,2025-07-02T10:00:00,2025-07-13T20:00:00
+E4,Alice Brown,"cook,server",50,2025-07-01T07:00:00,2025-07-14T19:00:00

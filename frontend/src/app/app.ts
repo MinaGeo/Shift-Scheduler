@@ -8,20 +8,17 @@ import { CalendarWrapperModule } from './calendar-wrapper.module';
 import {
   CalendarView,
   CalendarEvent,
-  CalendarEventTimesChangedEvent
+  CalendarEventTimesChangedEvent,
 } from 'angular-calendar';
 import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule,
-    CalendarWrapperModule
-  ],
-  
+  imports: [CommonModule, CalendarWrapperModule],
+
   templateUrl: './app.html',
-  styleUrls: ['./app.css']
+  styleUrls: ['./app.css'],
 })
 export class App {
   employees: Employee[] = [];
@@ -29,6 +26,7 @@ export class App {
   assignments: Assignment[] = [];
   unassignedShifts: Shift[] = [];
   calendarEvents: CalendarEvent[] = [];
+  overlappingShifts: { shift: Shift; employee: Employee }[] = [];
 
   CalendarView = CalendarView;
   view: CalendarView = CalendarView.Month;
@@ -42,29 +40,32 @@ export class App {
     this.view = view;
   }
 
-dayClicked({ day }: { day: any }): void {
-  const date: Date = day.date;
-  const events: CalendarEvent[] = day.events;
+  dayClicked({ day }: { day: any }): void {
+    const date: Date = day.date;
+    const events: CalendarEvent[] = day.events;
 
-  if (this.isSameMonth(date, this.viewDate)) {
-    if (
-      (this.isSameDay(this.viewDate, date) && this.activeDayIsOpen) ||
-      events.length === 0
-    ) {
-      this.activeDayIsOpen = false;
-    } else {
-      this.activeDayIsOpen = true;
-      this.viewDate = date;
+    if (this.isSameMonth(date, this.viewDate)) {
+      if (
+        (this.isSameDay(this.viewDate, date) && this.activeDayIsOpen) ||
+        events.length === 0
+      ) {
+        this.activeDayIsOpen = false;
+      } else {
+        this.activeDayIsOpen = true;
+        this.viewDate = date;
+      }
     }
   }
-}
-
 
   handleEvent(action: string, event: CalendarEvent): void {
     alert(`${action}: ${event.title}`);
   }
 
-  eventTimesChanged({ event, newStart, newEnd }: CalendarEventTimesChangedEvent): void {
+  eventTimesChanged({
+    event,
+    newStart,
+    newEnd,
+  }: CalendarEventTimesChangedEvent): void {
     event.start = newStart;
     event.end = newEnd;
     this.refresh.next();
@@ -119,10 +120,13 @@ dayClicked({ day }: { day: any }): void {
           employees.push({
             id: parts[0],
             name: parts[1],
-            skills: parts[2].replace(/"/g, '').split(',').map(s => s.trim()),
+            skills: parts[2]
+              .replace(/"/g, '')
+              .split(',')
+              .map((s) => s.trim()),
             max_hours: parseInt(parts[3]),
             availability_start: parts[4],
-            availability_end: parts[5]
+            availability_end: parts[5],
           });
         }
       }
@@ -144,7 +148,7 @@ dayClicked({ day }: { day: any }): void {
             role: parts[1],
             start_time: parts[2],
             end_time: parts[3],
-            required_skill: parts[4]
+            required_skill: parts[4],
           });
         }
       }
@@ -156,16 +160,22 @@ dayClicked({ day }: { day: any }): void {
     console.log('Running greedy scheduling...');
     this.assignments = [];
     this.unassignedShifts = [];
+    this.overlappingShifts = [];
     this.events = [];
 
     for (const shift of this.shifts) {
       let assigned = false;
 
       for (const employee of this.employees) {
-        if (this.canAssignEmployeeToShift(employee, shift)) {
+        const { canAssign, overlap } = this.canAssignEmployeeToShift(
+          employee,
+          shift
+        );
+
+        if (canAssign) {
           this.assignments.push({
             shift_id: shift.id,
-            employee_id: employee.id
+            employee_id: employee.id,
           });
 
           this.events.push({
@@ -174,17 +184,19 @@ dayClicked({ day }: { day: any }): void {
             title: `${shift.role} (${employee.name})`,
             color: {
               primary: '#1e90ff',
-              secondary: '#D1E8FF'
+              secondary: '#D1E8FF',
             },
             draggable: true,
             resizable: {
               beforeStart: true,
-              afterEnd: true
-            }
+              afterEnd: true,
+            },
           });
 
           assigned = true;
           break;
+        } else if (overlap) {
+          this.overlappingShifts.push({ shift, employee });
         }
       }
 
@@ -192,34 +204,48 @@ dayClicked({ day }: { day: any }): void {
         this.unassignedShifts.push(shift);
       }
     }
-    this.calendarEvents = [...this.events];
 
+    this.calendarEvents = [...this.events];
     console.log('Scheduling complete:', this.assignments.length, 'assignments');
     this.refresh.next();
   }
-
-  canAssignEmployeeToShift(employee: Employee, shift: Shift): boolean {
+  canAssignEmployeeToShift(
+    employee: Employee,
+    shift: Shift
+  ): { canAssign: boolean; overlap: boolean } {
     const shiftStart = new Date(shift.start_time);
     const shiftEnd = new Date(shift.end_time);
     const availStart = new Date(employee.availability_start);
     const availEnd = new Date(employee.availability_end);
 
-    const shiftHours = (shiftEnd.getTime() - shiftStart.getTime()) / 1000 / 60 / 60;
+    const shiftHours =
+      (shiftEnd.getTime() - shiftStart.getTime()) / 1000 / 60 / 60;
     const currentHours = this.getTotalAssignedHours(employee.id);
 
-    return (
+    const hasOverlap = this.assignments.some((a) => {
+      if (a.employee_id !== employee.id) return false;
+      const s = this.shifts.find((shift) => shift.id === a.shift_id);
+      if (!s) return false;
+      const sStart = new Date(s.start_time);
+      const sEnd = new Date(s.end_time);
+      return shiftStart < sEnd && shiftEnd > sStart;
+    });
+
+    const canAssign =
       employee.skills.includes(shift.required_skill) &&
       shiftStart >= availStart &&
       shiftEnd <= availEnd &&
-      currentHours + shiftHours <= employee.max_hours
-    );
+      currentHours + shiftHours <= employee.max_hours &&
+      !hasOverlap;
+
+    return { canAssign, overlap: hasOverlap };
   }
 
   getTotalAssignedHours(employeeId: string): number {
     let total = 0;
     for (const assignment of this.assignments) {
       if (assignment.employee_id === employeeId) {
-        const shift = this.shifts.find(s => s.id === assignment.shift_id);
+        const shift = this.shifts.find((s) => s.id === assignment.shift_id);
         if (shift) {
           const start = new Date(shift.start_time);
           const end = new Date(shift.end_time);
@@ -231,17 +257,17 @@ dayClicked({ day }: { day: any }): void {
   }
 
   getEmployeeName(employeeId: string): string {
-    const employee = this.employees.find(e => e.id === employeeId);
+    const employee = this.employees.find((e) => e.id === employeeId);
     return employee ? employee.name : 'Unknown';
   }
 
   getShiftRole(shiftId: string): string {
-    const shift = this.shifts.find(s => s.id === shiftId);
+    const shift = this.shifts.find((s) => s.id === shiftId);
     return shift ? shift.role : 'Unknown';
   }
 
   getShiftTime(shiftId: string): string {
-    const shift = this.shifts.find(s => s.id === shiftId);
+    const shift = this.shifts.find((s) => s.id === shiftId);
     return shift ? `${shift.start_time} - ${shift.end_time}` : 'Unknown';
   }
 }

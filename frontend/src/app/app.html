@@ -5,13 +5,20 @@
     <h2>Upload CSV Files</h2>
     <div>
       <label>Employees CSV:</label>
-      <input type="file" (change)="onEmployeeFileChange($event)" accept=".csv" />
+      <input
+        type="file"
+        (change)="onEmployeeFileChange($event)"
+        accept=".csv"
+      />
     </div>
     <div>
       <label>Shifts CSV:</label>
       <input type="file" (change)="onShiftFileChange($event)" accept=".csv" />
     </div>
-    <button (click)="runScheduling()" [disabled]="!employees.length || !shifts.length">
+    <button
+      (click)="runScheduling()"
+      [disabled]="!employees.length || !shifts.length"
+    >
       Generate Schedule
     </button>
   </div>
@@ -51,17 +58,29 @@
         </div>
       </div>
       <div class="col-md-4">
-        <h3>{{ viewDate | calendarDate:(view + 'ViewTitle'):'en' }}</h3>
+        <h3>{{ viewDate | calendarDate : view + "ViewTitle" : "en" }}</h3>
       </div>
       <div class="col-md-4">
         <div class="btn-group">
-          <div class="btn btn-primary" (click)="setView(CalendarView.Month)" [class.active]="view === CalendarView.Month">
+          <div
+            class="btn btn-primary"
+            (click)="setView(CalendarView.Month)"
+            [class.active]="view === CalendarView.Month"
+          >
             Month
           </div>
-          <div class="btn btn-primary" (click)="setView(CalendarView.Week)" [class.active]="view === CalendarView.Week">
+          <div
+            class="btn btn-primary"
+            (click)="setView(CalendarView.Week)"
+            [class.active]="view === CalendarView.Week"
+          >
             Week
           </div>
-          <div class="btn btn-primary" (click)="setView(CalendarView.Day)" [class.active]="view === CalendarView.Day">
+          <div
+            class="btn btn-primary"
+            (click)="setView(CalendarView.Day)"
+            [class.active]="view === CalendarView.Day"
+          >
             Day
           </div>
         </div>
@@ -102,11 +121,36 @@
       >
       </mwl-calendar-day-view>
     </div>
-
     <!-- Metrics -->
     <div class="metrics mt-4">
-      <p>Total Assignments: {{ assignments.length }}</p>
-      <p>Unassigned Shifts: {{ unassignedShifts.length }}</p>
+      <p><strong>Total Assignments:</strong> {{ assignments.length }}</p>
+      <ul>
+        <li *ngFor="let a of assignments">
+          {{ getShiftRole(a.shift_id) }} ({{ getShiftTime(a.shift_id) }})
+          assigned to {{ getEmployeeName(a.employee_id) }}
+        </li>
+      </ul>
+
+      <p class="mt-3">
+        <strong>Unassigned Shifts:</strong> {{ unassignedShifts.length }}
+      </p>
+      <ul>
+        <li *ngFor="let s of unassignedShifts">
+          {{ s.role }} ({{ s.start_time }} - {{ s.end_time }}) — required skill:
+          {{ s.required_skill }}
+        </li>
+      </ul>
+
+      <p class="mt-3 text-danger">
+        <strong>Overlapping Shift Conflicts:</strong>
+        {{ overlappingShifts.length }}
+      </p>
+      <ul *ngIf="overlappingShifts.length > 0">
+        <li *ngFor="let o of overlappingShifts">
+          Conflict: {{ o.shift.role }} ({{ o.shift.start_time }} -
+          {{ o.shift.end_time }}) overlaps for {{ o.employee.name }}
+        </li>
+      </ul>
     </div>
   </div>
 </div>

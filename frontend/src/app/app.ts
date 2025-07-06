@@ -27,14 +27,14 @@ export class App {
   unassignedShifts: Shift[] = [];
   calendarEvents: CalendarEvent[] = [];
   overlappingShifts: { shift: Shift; employee: Employee }[] = [];
-
   CalendarView = CalendarView;
   view: CalendarView = CalendarView.Month;
   viewDate: Date = new Date();
   refresh = new Subject<void>();
   activeDayIsOpen: boolean = true;
-
   events: CalendarEvent[] = [];
+
+  optimizationMetrics: any = null;
 
   setView(view: CalendarView) {
     this.view = view;
@@ -82,6 +82,98 @@ export class App {
     return date1.toDateString() === date2.toDateString();
   }
 
+optimizeOnline() {
+  const payload = {
+    period: '2025-07-01 to 2025-07-14',
+    employees: this.employees.map((e) => ({
+      id: e.id,
+      name: e.name,
+      skills: e.skills,
+      max_hours: e.max_hours,
+      availability: {
+        start: e.availability_start,
+        end: e.availability_end,
+      },
+    })),
+    shifts: this.shifts,
+    current_assignments: this.assignments,
+  };
+
+  console.log('Sending payload:', JSON.stringify(payload, null, 2));
+
+  fetch('http://127.0.0.1:8000/api/schedule/optimize', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((data) => {
+      console.log('Backend response:', data);
+
+      this.optimizationMetrics = data.metrics;
+
+      if (data.success) {
+        this.assignments = data.assignments;
+
+        // 🟡 Convert shift IDs to full shift objects
+        this.unassignedShifts = this.shifts.filter((s) =>
+          data.unassigned_shifts.includes(s.id)
+        );
+
+        // 🟢 Map optimized assignments to calendar events
+        this.calendarEvents = data.assignments.map((a: Assignment) => {
+          const shift = this.shifts.find((s) => s.id === a.shift_id);
+          const emp = this.employees.find((e) => e.id === a.employee_id);
+
+          if (!shift || !emp){
+            if (!shift) {
+              console.warn(`Shift not found for ID: ${a.shift_id}`);
+            }
+            if (!emp) {
+              console.warn(`Employee not found for ID: ${a.employee_id}`);
+            }
+            return null; // Skip this assignment if shift or employee is not found
+          }
+
+          return {
+            start: new Date(shift.start_time),
+            end: new Date(shift.end_time),
+            title: `${shift.role} (${emp.name})`,
+            color: {
+              primary: '#00b894', // teal for optimized
+              secondary: '#b2f5ea',
+            },
+            draggable: true,
+            resizable: {
+              beforeStart: true,
+              afterEnd: true,
+            },
+          };
+        }).filter((e: CalendarEvent | null): e is CalendarEvent => e !== null) as CalendarEvent[];
+
+        console.log('Calendar events updated:', this.calendarEvents.length);
+
+        if (this.calendarEvents.length >0) {
+          this.viewDate = this.calendarEvents[0].start;
+        }
+        // 🔄 Refresh calendar
+        this.refresh.next();
+      }
+    })
+    .catch((err) => {
+      console.error('Backend call failed:', err);
+      alert('Backend is not available or request failed.');
+    });
+}
+
+
   onEmployeeFileChange(event: any) {
     const file = event.target.files[0];
     if (file) {
@@ -124,14 +216,21 @@ export class App {
               .replace(/"/g, '')
               .split(',')
               .map((s) => s.trim()),
-            max_hours: parseInt(parts[3]),
-            availability_start: parts[4],
-            availability_end: parts[5],
+            max_hours: isNaN(parseInt(parts[3])) ? 0 : parseInt(parts[3]),
+            availability_start: this.parseDateSafe(parts[4]),
+            availability_end: this.parseDateSafe(parts[5]),
           });
         }
       }
     }
     return employees;
+  }
+
+  parseDateSafe(dateStr: string): string {
+    const date = new Date(dateStr);
+    return isNaN(date.getTime())
+      ? new Date().toISOString()
+      : date.toISOString();
   }
 
   parseShiftCSV(csvText: string): Shift[] {

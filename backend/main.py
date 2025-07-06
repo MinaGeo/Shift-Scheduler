@@ -1,10 +1,18 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import List, Dict, Optional
+from fastapi.middleware.cors import CORSMiddleware
+
 from models import OptimizationRequest, OptimizationResponse
 from optimizer import run_ilp_optimization
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/api/health")

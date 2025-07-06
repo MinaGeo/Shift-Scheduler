@@ -1,28 +1,28 @@
 <div class="container">
   <h1>Shift Scheduler MVP</h1>
 
-  <div class="upload-section">
+  <!-- Upload CSV Section -->
+  <div class="upload-section mb-4">
     <h2>Upload CSV Files</h2>
-    <div>
-      <label>Employees CSV:</label>
-      <input
-        type="file"
-        (change)="onEmployeeFileChange($event)"
-        accept=".csv"
-      />
+    <div class="mb-2">
+      <label for="emp-csv"><strong>Employees CSV:</strong></label>
+      <input id="emp-csv" type="file" (change)="onEmployeeFileChange($event)" accept=".csv" />
     </div>
-    <div>
-      <label>Shifts CSV:</label>
-      <input type="file" (change)="onShiftFileChange($event)" accept=".csv" />
+    <div class="mb-3">
+      <label for="shift-csv"><strong>Shifts CSV:</strong></label>
+      <input id="shift-csv" type="file" (change)="onShiftFileChange($event)" accept=".csv" />
     </div>
-    <button
-      (click)="runScheduling()"
-      [disabled]="!employees.length || !shifts.length"
-    >
-      Generate Schedule
-    </button>
+    <div class="btn-group">
+      <button class="btn btn-success" (click)="runScheduling()" [disabled]="!employees.length || !shifts.length">
+        Generate Schedule (Offline)
+      </button>
+      <button class="btn btn-primary" (click)="optimizeOnline()" [disabled]="!employees.length || !shifts.length">
+        Optimize Online (ILP)
+      </button>
+    </div>
   </div>
 
+  <!-- Generated Schedule Section -->
   <div class="results" *ngIf="assignments.length">
     <h2>Generated Schedule</h2>
 
@@ -30,64 +30,43 @@
     <div class="row text-center my-3">
       <div class="col-md-4">
         <div class="btn-group">
-          <div
+          <button
             class="btn btn-primary"
             mwlCalendarPreviousView
             [view]="view"
             [(viewDate)]="viewDate"
-            (viewDateChange)="refresh.next()"
-          >
+            (viewDateChange)="refresh.next()">
             ‹ Prev
-          </div>
-          <div
+          </button>
+          <button
             class="btn btn-outline-secondary"
             mwlCalendarToday
-            [(viewDate)]="viewDate"
-          >
+            [(viewDate)]="viewDate">
             Today
-          </div>
-          <div
+          </button>
+          <button
             class="btn btn-primary"
             mwlCalendarNextView
             [view]="view"
             [(viewDate)]="viewDate"
-            (viewDateChange)="refresh.next()"
-          >
+            (viewDateChange)="refresh.next()">
             Next ›
-          </div>
+          </button>
         </div>
       </div>
       <div class="col-md-4">
-        <h3>{{ viewDate | calendarDate : view + "ViewTitle" : "en" }}</h3>
+        <h3>{{ viewDate | calendarDate: (view + "ViewTitle") : "en" }}</h3>
       </div>
       <div class="col-md-4">
         <div class="btn-group">
-          <div
-            class="btn btn-primary"
-            (click)="setView(CalendarView.Month)"
-            [class.active]="view === CalendarView.Month"
-          >
-            Month
-          </div>
-          <div
-            class="btn btn-primary"
-            (click)="setView(CalendarView.Week)"
-            [class.active]="view === CalendarView.Week"
-          >
-            Week
-          </div>
-          <div
-            class="btn btn-primary"
-            (click)="setView(CalendarView.Day)"
-            [class.active]="view === CalendarView.Day"
-          >
-            Day
-          </div>
+          <button class="btn btn-primary" (click)="setView(CalendarView.Month)" [class.active]="view === CalendarView.Month">Month</button>
+          <button class="btn btn-primary" (click)="setView(CalendarView.Week)" [class.active]="view === CalendarView.Week">Week</button>
+          <button class="btn btn-primary" (click)="setView(CalendarView.Day)" [class.active]="view === CalendarView.Day">Day</button>
         </div>
       </div>
     </div>
 
-    <!-- Calendar Views -->
+    <!-- Calendar View -->
     <div [ngSwitch]="view">
       <mwl-calendar-month-view
         *ngSwitchCase="CalendarView.Month"
@@ -96,8 +75,7 @@
         [refresh]="refresh"
         [activeDayIsOpen]="activeDayIsOpen"
         (dayClicked)="dayClicked($event)"
-        (eventClicked)="handleEvent('Clicked', $event.event)"
-      >
+        (eventClicked)="handleEvent('Clicked', $event.event)">
       </mwl-calendar-month-view>
 
       <mwl-calendar-week-view
@@ -108,8 +86,7 @@
         [hourSegments]="2"
         [dayStartHour]="6"
         [dayEndHour]="22"
-        (eventClicked)="handleEvent('Clicked', $event.event)"
-      >
+        (eventClicked)="handleEvent('Clicked', $event.event)">
       </mwl-calendar-week-view>
 
       <mwl-calendar-day-view
@@ -117,40 +94,42 @@
         [viewDate]="viewDate"
         [events]="calendarEvents"
         [refresh]="refresh"
-        (eventClicked)="handleEvent('Clicked', $event.event)"
-      >
+        (eventClicked)="handleEvent('Clicked', $event.event)">
       </mwl-calendar-day-view>
     </div>
-    <!-- Metrics -->
+
+    <!-- Metrics and Results -->
     <div class="metrics mt-4">
       <p><strong>Total Assignments:</strong> {{ assignments.length }}</p>
-      <ul>
+      <ul class="mb-3">
         <li *ngFor="let a of assignments">
-          {{ getShiftRole(a.shift_id) }} ({{ getShiftTime(a.shift_id) }})
-          assigned to {{ getEmployeeName(a.employee_id) }}
+          {{ getShiftRole(a.shift_id) }} ({{ getShiftTime(a.shift_id) }}) assigned to <strong>{{ getEmployeeName(a.employee_id) }}</strong>
         </li>
       </ul>
 
-      <p class="mt-3">
-        <strong>Unassigned Shifts:</strong> {{ unassignedShifts.length }}
-      </p>
-      <ul>
+      <p><strong>Unassigned Shifts:</strong> {{ unassignedShifts.length }}</p>
+      <ul class="mb-3" *ngIf="unassignedShifts.length > 0">
         <li *ngFor="let s of unassignedShifts">
-          {{ s.role }} ({{ s.start_time }} - {{ s.end_time }}) — required skill:
-          {{ s.required_skill }}
+          {{ s.role }} ({{ s.start_time }} - {{ s.end_time }}) — Required skill: <strong>{{ s.required_skill }}</strong>
         </li>
       </ul>
 
-      <p class="mt-3 text-danger">
-        <strong>Overlapping Shift Conflicts:</strong>
-        {{ overlappingShifts.length }}
-      </p>
-      <ul *ngIf="overlappingShifts.length > 0">
+      <p class="text-danger"><strong>Overlapping Shift Conflicts:</strong> {{ overlappingShifts.length }}</p>
+      <ul class="mb-3" *ngIf="overlappingShifts.length > 0">
         <li *ngFor="let o of overlappingShifts">
-          Conflict: {{ o.shift.role }} ({{ o.shift.start_time }} -
-          {{ o.shift.end_time }}) overlaps for {{ o.employee.name }}
+          Conflict: {{ o.shift.role }} ({{ o.shift.start_time }} - {{ o.shift.end_time }}) overlaps for <strong>{{ o.employee.name }}</strong>
         </li>
       </ul>
+
+      <div *ngIf="optimizationMetrics" class="mt-3">
+        <p><strong>Optimization Metrics:</strong></p>
+        <ul>
+          <li>Overtime Minutes: {{ optimizationMetrics.total_overtime_minutes }}</li>
+          <li>Constraint Violations: {{ optimizationMetrics.constraint_violations }}</li>
+          <li>Optimization Time: {{ optimizationMetrics.optimization_time_ms }} ms</li>
+          <li>Objective Value: {{ optimizationMetrics.objective_value }}</li>
+        </ul>
+      </div>
     </div>
   </div>
 </div>

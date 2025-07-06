@@ -1,34 +1,112 @@
-    <div class="container">
-      <h1>Shift Scheduler MVP</h1>
-      
-      <div class="upload-section">
-        <h2>Upload CSV Files</h2>
-        <div>
-          <label>Employees CSV:</label>
-          <input type="file" (change)="onEmployeeFileChange($event)" accept=".csv">
-        </div>
-        <div>
-          <label>Shifts CSV:</label>
-          <input type="file" (change)="onShiftFileChange($event)" accept=".csv">
-        </div>
-        <button (click)="runScheduling()" [disabled]="!employees.length || !shifts.length">
-          Generate Schedule
-        </button>
-      </div>
+<div class="container">
+  <h1>Shift Scheduler MVP</h1>
 
-      <div class="results" *ngIf="assignments.length">
-        <h2>Generated Schedule</h2>
-        <div class="schedule-grid">
-          <div *ngFor="let assignment of assignments" class="assignment-card">
-            <strong>{{getShiftRole(assignment.shift_id)}}</strong><br>
-            Employee: {{getEmployeeName(assignment.employee_id)}}<br>
-            Time: {{getShiftTime(assignment.shift_id)}}
+  <div class="upload-section">
+    <h2>Upload CSV Files</h2>
+    <div>
+      <label>Employees CSV:</label>
+      <input type="file" (change)="onEmployeeFileChange($event)" accept=".csv" />
+    </div>
+    <div>
+      <label>Shifts CSV:</label>
+      <input type="file" (change)="onShiftFileChange($event)" accept=".csv" />
+    </div>
+    <button (click)="runScheduling()" [disabled]="!employees.length || !shifts.length">
+      Generate Schedule
+    </button>
+  </div>
+
+  <div class="results" *ngIf="assignments.length">
+    <h2>Generated Schedule</h2>
+
+    <!-- Calendar Controls -->
+    <div class="row text-center my-3">
+      <div class="col-md-4">
+        <div class="btn-group">
+          <div
+            class="btn btn-primary"
+            mwlCalendarPreviousView
+            [view]="view"
+            [(viewDate)]="viewDate"
+            (viewDateChange)="refresh.next()"
+          >
+            ‹ Prev
+          </div>
+          <div
+            class="btn btn-outline-secondary"
+            mwlCalendarToday
+            [(viewDate)]="viewDate"
+          >
+            Today
+          </div>
+          <div
+            class="btn btn-primary"
+            mwlCalendarNextView
+            [view]="view"
+            [(viewDate)]="viewDate"
+            (viewDateChange)="refresh.next()"
+          >
+            Next ›
           </div>
         </div>
-        
-        <div class="metrics">
-          <p>Total Assignments: {{assignments.length}}</p>
-          <p>Unassigned Shifts: {{unassignedShifts.length}}</p>
+      </div>
+      <div class="col-md-4">
+        <h3>{{ viewDate | calendarDate:(view + 'ViewTitle'):'en' }}</h3>
+      </div>
+      <div class="col-md-4">
+        <div class="btn-group">
+          <div class="btn btn-primary" (click)="setView(CalendarView.Month)" [class.active]="view === CalendarView.Month">
+            Month
+          </div>
+          <div class="btn btn-primary" (click)="setView(CalendarView.Week)" [class.active]="view === CalendarView.Week">
+            Week
+          </div>
+          <div class="btn btn-primary" (click)="setView(CalendarView.Day)" [class.active]="view === CalendarView.Day">
+            Day
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Calendar Views -->
+    <div [ngSwitch]="view">
+      <mwl-calendar-month-view
+        *ngSwitchCase="CalendarView.Month"
+        [viewDate]="viewDate"
+        [events]="calendarEvents"
+        [refresh]="refresh"
+        [activeDayIsOpen]="activeDayIsOpen"
+        (dayClicked)="dayClicked($event)"
+        (eventClicked)="handleEvent('Clicked', $event.event)"
+      >
+      </mwl-calendar-month-view>
+
+      <mwl-calendar-week-view
+        *ngSwitchCase="CalendarView.Week"
+        [viewDate]="viewDate"
+        [events]="calendarEvents"
+        [refresh]="refresh"
+        [hourSegments]="2"
+        [dayStartHour]="6"
+        [dayEndHour]="22"
+        (eventClicked)="handleEvent('Clicked', $event.event)"
+      >
+      </mwl-calendar-week-view>
+
+      <mwl-calendar-day-view
+        *ngSwitchCase="CalendarView.Day"
+        [viewDate]="viewDate"
+        [events]="calendarEvents"
+        [refresh]="refresh"
+        (eventClicked)="handleEvent('Clicked', $event.event)"
+      >
+      </mwl-calendar-day-view>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics mt-4">
+      <p>Total Assignments: {{ assignments.length }}</p>
+      <p>Unassigned Shifts: {{ unassignedShifts.length }}</p>
+    </div>
+  </div>
+</div>

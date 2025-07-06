@@ -1,21 +1,85 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {Employee} from './types/employee';
-import {Shift} from './types/shift';
-import {Assignment} from './types/assignment';
+import { Employee } from './types/employee';
+import { Shift } from './types/shift';
+import { Assignment } from './types/assignment';
+import { CalendarWrapperModule } from './calendar-wrapper.module';
 
+import {
+  CalendarView,
+  CalendarEvent,
+  CalendarEventTimesChangedEvent
+} from 'angular-calendar';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [CommonModule],
+  standalone: true,
+  imports: [
+    CommonModule,
+    CalendarWrapperModule
+  ],
+  
   templateUrl: './app.html',
-  styleUrls: ['./app.css'] 
+  styleUrls: ['./app.css']
 })
 export class App {
   employees: Employee[] = [];
   shifts: Shift[] = [];
   assignments: Assignment[] = [];
   unassignedShifts: Shift[] = [];
+  calendarEvents: CalendarEvent[] = [];
+
+  CalendarView = CalendarView;
+  view: CalendarView = CalendarView.Month;
+  viewDate: Date = new Date();
+  refresh = new Subject<void>();
+  activeDayIsOpen: boolean = true;
+
+  events: CalendarEvent[] = [];
+
+  setView(view: CalendarView) {
+    this.view = view;
+  }
+
+dayClicked({ day }: { day: any }): void {
+  const date: Date = day.date;
+  const events: CalendarEvent[] = day.events;
+
+  if (this.isSameMonth(date, this.viewDate)) {
+    if (
+      (this.isSameDay(this.viewDate, date) && this.activeDayIsOpen) ||
+      events.length === 0
+    ) {
+      this.activeDayIsOpen = false;
+    } else {
+      this.activeDayIsOpen = true;
+      this.viewDate = date;
+    }
+  }
+}
+
+
+  handleEvent(action: string, event: CalendarEvent): void {
+    alert(`${action}: ${event.title}`);
+  }
+
+  eventTimesChanged({ event, newStart, newEnd }: CalendarEventTimesChangedEvent): void {
+    event.start = newStart;
+    event.end = newEnd;
+    this.refresh.next();
+  }
+
+  isSameMonth(date1: Date, date2: Date): boolean {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth()
+    );
+  }
+
+  isSameDay(date1: Date, date2: Date): boolean {
+    return date1.toDateString() === date2.toDateString();
+  }
 
   onEmployeeFileChange(event: any) {
     const file = event.target.files[0];
@@ -46,12 +110,12 @@ export class App {
   parseEmployeeCSV(csvText: string): Employee[] {
     const lines = csvText.split('\n');
     const employees: Employee[] = [];
-    
+
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line) {
         const parts = line.split(',');
-        if (parts.length >= 5) {
+        if (parts.length >= 6) {
           employees.push({
             id: parts[0],
             name: parts[1],
@@ -69,7 +133,7 @@ export class App {
   parseShiftCSV(csvText: string): Shift[] {
     const lines = csvText.split('\n');
     const shifts: Shift[] = [];
-    
+
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line) {
@@ -92,31 +156,78 @@ export class App {
     console.log('Running greedy scheduling...');
     this.assignments = [];
     this.unassignedShifts = [];
-    
+    this.events = [];
+
     for (const shift of this.shifts) {
       let assigned = false;
-      
+
       for (const employee of this.employees) {
         if (this.canAssignEmployeeToShift(employee, shift)) {
           this.assignments.push({
             shift_id: shift.id,
             employee_id: employee.id
           });
+
+          this.events.push({
+            start: new Date(shift.start_time),
+            end: new Date(shift.end_time),
+            title: `${shift.role} (${employee.name})`,
+            color: {
+              primary: '#1e90ff',
+              secondary: '#D1E8FF'
+            },
+            draggable: true,
+            resizable: {
+              beforeStart: true,
+              afterEnd: true
+            }
+          });
+
           assigned = true;
           break;
         }
       }
-      
+
       if (!assigned) {
         this.unassignedShifts.push(shift);
       }
     }
-    
+    this.calendarEvents = [...this.events];
+
     console.log('Scheduling complete:', this.assignments.length, 'assignments');
+    this.refresh.next();
   }
 
   canAssignEmployeeToShift(employee: Employee, shift: Shift): boolean {
-    return employee.skills.includes(shift.required_skill);
+    const shiftStart = new Date(shift.start_time);
+    const shiftEnd = new Date(shift.end_time);
+    const availStart = new Date(employee.availability_start);
+    const availEnd = new Date(employee.availability_end);
+
+    const shiftHours = (shiftEnd.getTime() - shiftStart.getTime()) / 1000 / 60 / 60;
+    const currentHours = this.getTotalAssignedHours(employee.id);
+
+    return (
+      employee.skills.includes(shift.required_skill) &&
+      shiftStart >= availStart &&
+      shiftEnd <= availEnd &&
+      currentHours + shiftHours <= employee.max_hours
+    );
+  }
+
+  getTotalAssignedHours(employeeId: string): number {
+    let total = 0;
+    for (const assignment of this.assignments) {
+      if (assignment.employee_id === employeeId) {
+        const shift = this.shifts.find(s => s.id === assignment.shift_id);
+        if (shift) {
+          const start = new Date(shift.start_time);
+          const end = new Date(shift.end_time);
+          total += (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+        }
+      }
+    }
+    return total;
   }
 
   getEmployeeName(employeeId: string): string {
